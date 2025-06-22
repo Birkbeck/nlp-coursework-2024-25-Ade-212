@@ -5,6 +5,8 @@
 import nltk
 import spacy
 from pathlib import Path
+import sys, os
+import pandas as pd
 
 
 nlp = spacy.load("en_core_web_sm")
@@ -40,10 +42,36 @@ def count_syl(word, d):
     pass
 
 
-def read_novels(path=Path.cwd() / "texts" / "novels"):
+def read_novels(path=Path.cwd() / "p1-texts" / "novels"):
     """Reads texts from a directory of .txt files and returns a DataFrame with the text, title,
-    author, and year"""
-    pass
+    author, and year
+    
+    Args:
+        path (Path): path to the directory containing novel .txt files
+    Returns:
+        pandas.DataFrame: columns = ["text", "title", "author", "year"]
+    """
+    records = []
+    for txt_file in sorted(path.glob("*.txt")):
+        # filename without .txt
+        stem = txt_file.stem
+        parts = stem.split("-")
+        # assume last part is year, second last is author, rest is title
+        year = int(parts[-1])
+        author = parts[-2]
+        title = "-".join(parts[:-2])
+        # read full text
+        text = txt_file.read_text(encoding="utf-8")
+        records.append({
+            "text": text,
+            "title": title,
+            "author": author,
+            "year": year
+        })
+
+    df = pd.DataFrame.from_records(records, columns=["text", "title", "author", "year"])
+    df = df.sort_values("year").reset_index(drop=True)
+    return df
 
 
 def parse(df, store_path=Path.cwd() / "pickles", out_name="parsed.pickle"):
@@ -96,9 +124,9 @@ if __name__ == "__main__":
     """
     uncomment the following lines to run the functions once you have completed them
     """
-    #path = Path.cwd() / "p1-texts" / "novels"
-    #print(path)
-    #df = read_novels(path) # this line will fail until you have completed the read_novels function above.
+    path = Path.cwd() / "p1-texts" / "novels"
+    print(path)
+    df = read_novels(path) # this line will fail until you have completed the read_novels function above.
     #print(df.head())
     #nltk.download("cmudict")
     #parse(df)
