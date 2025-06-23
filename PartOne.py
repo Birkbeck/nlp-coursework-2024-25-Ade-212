@@ -5,9 +5,9 @@
 import nltk
 import spacy
 from pathlib import Path
-import sys, os
 import pandas as pd
 import string
+import re 
 
 
 nlp = spacy.load("en_core_web_sm")
@@ -26,7 +26,22 @@ def fk_level(text, d):
     Returns:
         float: The Flesch-Kincaid Grade Level of the text. (higher grade is more difficult)
     """
-    pass
+    try:
+        nltk.data.find("tokenizers/punkt")
+    except LookupError:
+        nltk.download("punkt", quiet=True)
+    # tokenize sentences & words
+    sentences = nltk.sent_tokenize(text)
+    words = nltk.word_tokenize(text)
+    # filter out non-words (e.g. pure punctuation)
+    words = [w for w in words if any(c.isalpha() for c in w)]
+    num_sents = max(len(sentences), 1)
+    num_words = len(words) or 1
+    # total syllables
+    total_syl = sum(count_syl(w, d) for w in words)
+    # Flesch-Kincaid formula
+    fk = 0.39 * (num_words / num_sents) + 11.8 * (total_syl / num_words) - 15.59
+    return fk
 
 
 def count_syl(word, d):
@@ -40,7 +55,16 @@ def count_syl(word, d):
     Returns:
         int: The number of syllables in the word.
     """
-    pass
+    w = word.lower()
+    # 1) Lookup in CMU dict
+    if w in d:
+        # take first pronunciation
+        pron = d[w][0]
+        # count phonemes ending in a digit (0,1,2)
+        return sum(1 for p in pron if p[-1].isdigit())
+    # 2) Fallback: count vowel clusters
+    clusters = re.findall(r"[aeiouy]+", w)
+    return max(1, len(clusters))
 
 
 def read_novels(path=Path.cwd() / "p1-texts" / "novels"):
