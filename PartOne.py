@@ -5,10 +5,11 @@
 import nltk
 import spacy
 from pathlib import Path
+from spacy.tokens import Doc
 import pandas as pd
 import string
 import re 
-
+import pickle
 
 nlp = spacy.load("en_core_web_sm")
 nlp.max_length = 2000000
@@ -99,10 +100,40 @@ def read_novels(path=Path.cwd() / "p1-texts" / "novels"):
     return df
 
 
+def _chunk_text(text, size=50_000):
+    """Yield overlapping character slices so we don’t split words mid-chunk."""
+    start = 0
+    N = len(text)
+    while start < N:
+        end = min(start + size, N)
+        # expand to next whitespace to avoid chopping word
+        while end < N and not text[end].isspace():
+            end += 1
+        yield text[start:end]
+        start = end
+
 def parse(df, store_path=Path.cwd() / "pickles", out_name="parsed.pickle"):
     """Parses the text of a DataFrame using spaCy, stores the parsed docs as a column and writes 
     the resulting  DataFrame to a pickle file"""
-    pass
+    store_path.mkdir(exist_ok=True)
+    
+    parsed_docs = []
+    for text in df["text"]:
+        if len(text) > nlp.max_length:          # oversize novel
+            slabs = list(_chunk_text(text, size=50_000))
+            slab_docs = list(nlp.pipe(slabs, disable=["ner", "textcat"]))
+            full_doc = Doc.from_docs(*slab_docs)
+            parsed_docs.append(full_doc)
+        else:                                   # small enough
+            parsed_docs.append(nlp(text))
+    
+    df = df.copy()
+    df["parsed"] = parsed_docs
+
+    with open(store_path / out_name, "wb") as f:
+        pickle.dump(df, f)
+
+    return df
 
 
 def nltk_ttr(text):
@@ -163,10 +194,10 @@ if __name__ == "__main__":
     path = Path.cwd() / "p1-texts" / "novels"
     print(path)
     df = read_novels(path) # this line will fail until you have completed the read_novels function above.
-    #print(df.head())
+    print(df.head())
     #nltk.download("cmudict")
-    #parse(df)
-    #print(df.head())
+    df = parse(df)
+    print(df.head())
     #print(get_ttrs(df))
     #print(get_fks(df))
     #df = pd.read_pickle(Path.cwd() / "pickles" /"name.pickle")
