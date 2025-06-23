@@ -139,7 +139,7 @@ if __name__ == "__main__":
     path = Path.cwd() / "p1-texts" / "novels"
     print(path)
     df = read_novels(path) # this line will fail until you have completed the read_novels function above.
-    print(df.head())
+    #print(df.head())
     #nltk.download("cmudict")
     #parse(df)
     #print(df.head())
