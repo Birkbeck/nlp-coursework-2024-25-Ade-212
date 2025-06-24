@@ -170,11 +170,12 @@ def get_fks(df):
         results[row["title"]] = round(fk_level(row["text"], cmudict), 4)
     return results
 
+
 def object_counts(doc: Doc):
-    """Returns the 10 most common direct objects (dobj) in the parsed Doc."""
+    """Returns the 10 most common syntactic objects in the parsed Doc."""
     counts = Counter()
     for token in doc:
-        # find direct objects of verbs
+        # find syntactic objects
         if token.dep_ == "dobj" and token.head.pos_ == "VERB":
             counts[token.text.lower()] += 1
     return [obj for obj, _ in counts.most_common(10)]
@@ -257,8 +258,8 @@ if __name__ == "__main__":
         title = row["title"]
         doc   = row["parsed"]
         
-        # 10 most common direct objects
-        print(f"{title} — direct objects")
+        # 10 most common syntactic objects
+        print(f"{title} — syntactic objects")
         print(object_counts(doc))
         
         # 10 most common 'hear' subjects by frequency
