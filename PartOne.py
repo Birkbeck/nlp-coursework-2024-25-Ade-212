@@ -6,10 +6,12 @@ import nltk
 import spacy
 from pathlib import Path
 from spacy.tokens import Doc
+from collections import Counter
 import pandas as pd
 import string
 import re 
 import pickle
+import math
 
 nlp = spacy.load("en_core_web_sm")
 nlp.max_length = 2000000
@@ -101,7 +103,7 @@ def read_novels(path=Path.cwd() / "p1-texts" / "novels"):
 
 
 def _chunk_text(text, size=50_000):
-    """Yield overlapping character slices so we don’t split words mid-chunk."""
+    """Yield overlapping character slices so as to not split words mid-chunk."""
     start = 0
     N = len(text)
     while start < N:
@@ -168,22 +170,69 @@ def get_fks(df):
         results[row["title"]] = round(fk_level(row["text"], cmudict), 4)
     return results
 
+def object_counts(doc: Doc):
+    """Returns the 10 most common direct objects (dobj) in the parsed Doc."""
+    counts = Counter()
+    for token in doc:
+        # find direct objects of verbs
+        if token.dep_ == "dobj" and token.head.pos_ == "VERB":
+            counts[token.text.lower()] += 1
+    return [obj for obj, _ in counts.most_common(10)]
+
 
 def subjects_by_verb_pmi(doc, target_verb):
     """Extracts the most common subjects of a given verb in a parsed document. Returns a list."""
-    pass
+    tverb = target_verb.lower()
+    subj_counts = Counter()
+    co_counts = Counter()
+    total_rels = 0
+
+    # 1) Gather counts
+    for token in doc:
+        if token.dep_ == "nsubj" and token.head.pos_ == "VERB":
+            subj = token.text.lower()
+            subj_counts[subj] += 1
+            total_rels += 1
+            if token.head.lemma_.lower() == tverb:
+                co_counts[subj] += 1
+
+    verb_rel_count = sum(co_counts.values()) or 1  # avoid zero
+
+    # 2) Coalculate PMI for each subject that co-occurs
+    pmi_scores = {}
+    for subj, co in co_counts.items():
+        p_w = subj_counts[subj] / total_rels
+        p_v = verb_rel_count / total_rels
+        p_wv = co / total_rels
+        pmi = math.log(p_wv / (p_w * p_v), 2)
+        pmi_scores[subj] = pmi
+
+    # 3) Return top 10 by PMI
+    return [subj for subj, _ in
+            sorted(pmi_scores.items(), key=lambda x: x[1], reverse=True)[:10]]
 
 
-
-def subjects_by_verb_count(doc, verb):
+def subjects_by_verb_count(doc: Doc, verb: str):
     """Extracts the most common subjects of a given verb in a parsed document. Returns a list."""
-    pass
+    verb = verb.lower()
+    counts = Counter()
+    for token in doc:
+        # match any inflection of the target verb
+        if token.pos_ == "VERB" and token.lemma_.lower() == verb:
+            for child in token.children:
+                if child.dep_ == "nsubj":
+                    counts[child.text.lower()] += 1
+    return [subj for subj, _ in counts.most_common(10)]
 
 
 
 def adjective_counts(doc):
     """Extracts the most common adjectives in a parsed document. Returns a list of tuples."""
-    pass
+    counts = Counter()
+    for token in doc:
+        if token.pos_ == "ADJ":
+            counts[token.text.lower()] += 1
+    return counts.most_common(10)
 
 
 
@@ -198,19 +247,34 @@ if __name__ == "__main__":
     #nltk.download("cmudict")
     df = parse(df)
     print(df.head())
-    #print(get_ttrs(df))
-    #print(get_fks(df))
-    #df = pd.read_pickle(Path.cwd() / "pickles" /"name.pickle")
-    # print(adjective_counts(df))
-    """ 
-    for i, row in df.iterrows():
-        print(row["title"])
-        print(subjects_by_verb_count(row["parsed"], "hear"))
-        print("\n")
+    print(get_ttrs(df))
+    print(get_fks(df))
+    df = pd.read_pickle(Path.cwd() / "pickles"/ "parsed.pickle")
+    print(df.head())
+    #print(adjective_counts(df))
+ 
+    for _, row in df.iterrows():
+        title = row["title"]
+        doc   = row["parsed"]
+        
+        # 10 most common direct objects
+        print(f"{title} — direct objects")
+        print(object_counts(doc))
+        
+        # 10 most common 'hear' subjects by frequency
+        print(f"{title} — hear-subjects (count)")
+        print(subjects_by_verb_count(doc, "hear"))
+        
+        # 10 most common 'hear' subjects by PMI
+        print(f"{title} — hear-subjects (PMI)")
+        print(subjects_by_verb_pmi(doc, "hear"))
+        
+        # Adjective count
+        print(f"{title} — adjectives")
+        print(adjective_counts(doc))
+        
+        print()  # blank line between novels for readability
 
-    for i, row in df.iterrows():
-        print(row["title"])
-        print(subjects_by_verb_pmi(row["parsed"], "hear"))
-        print("\n")
-    """
+    
+
 
