@@ -84,7 +84,7 @@ def read_novels(path=Path.cwd() / "p1-texts" / "novels"):
         # filename without .txt
         stem = txt_file.stem
         parts = stem.split("-")
-        # assume last part is year, second last is author, rest is title
+        # last part is year, second last is author, rest is title
         year = int(parts[-1])
         author = parts[-2]
         title = "-".join(parts[:-2])
@@ -173,10 +173,11 @@ def get_fks(df):
 
 def object_counts(doc: Doc):
     """Returns the 10 most common syntactic objects in the parsed Doc."""
+    object_deps = {"dobj", "iobj", "obj", "attr", "pobj"}
     counts = Counter()
     for token in doc:
         # find syntactic objects
-        if token.dep_ == "dobj" and token.head.pos_ == "VERB":
+        if token.dep_ in object_deps and token.head.pos_ == "VERB":
             counts[token.text.lower()] += 1
     return [obj for obj, _ in counts.most_common(10)]
 
