@@ -1,5 +1,7 @@
 import pandas as pd
 from pathlib import Path
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 
 # Task 2a(i-iv) implementation
 def load_and_filter_data(path=Path.cwd() / "p2-texts" / "hansard40000.csv"):
@@ -18,7 +20,25 @@ def load_and_filter_data(path=Path.cwd() / "p2-texts" / "hansard40000.csv"):
     df = df[df["speech"].str.len() >= 1000]
     return df
 
+# Task 2b implementation
+def vectorize_and_split(df, random_state=26, test_size=0.25):
+    # 1) fit & transform
+    vects = TfidfVectorizer(stop_words='english', max_features=3000)
+    X = vects.fit_transform(df['speech'])
+    y = df['party']
+    # 2) stratified split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y,
+        test_size=test_size,
+        stratify=y,
+        random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test, vects
+
+
 if __name__ == "__main__":
     df = load_and_filter_data()
-    # Task asks only to print the shape
+    # Print the shape - Task 2a
     print(df.shape)
+    # Task 2b
+    X_train, X_test, y_train, y_test, vect = vectorize_and_split(df)
