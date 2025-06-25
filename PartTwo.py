@@ -44,6 +44,7 @@ if __name__ == "__main__":
     df = load_and_filter_data()
     # Print the shape - Task 2a
     print(df.shape)
+    
     # Task 2b
     X_train, X_test, y_train, y_test, vect = vectorize_and_split(df)
     
@@ -65,3 +66,23 @@ if __name__ == "__main__":
         print(f"Linear SVM macro-average F1 score: {macro_f1_svm:.4f}")
         print(classification_report(y_test, y_pred_svm))
     train_and_evaluate(X_train, X_test, y_train, y_test)
+    
+    # Task 2d: unigrams, bi-grams & tri-grams
+    vect_ngram = TfidfVectorizer(
+        stop_words='english',
+        max_features=3000,
+        ngram_range=(1, 3)
+    )
+    X_ngram = vect_ngram.fit_transform(df["speech"])
+    y = df["party"]
+    Xn_train, Xn_test, yn_train, yn_test = train_test_split(
+        X_ngram, y,
+        test_size=0.25,
+        stratify=y,
+        random_state=26
+    )
+
+    # Print macro-F1 and classification report again, now with n-grams range (1, 3)
+    train_and_evaluate(Xn_train, Xn_test, yn_train, yn_test)
+
+
