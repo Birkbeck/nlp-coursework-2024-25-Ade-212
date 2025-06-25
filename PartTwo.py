@@ -2,6 +2,10 @@ import pandas as pd
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import f1_score, classification_report
+
 
 # Task 2a(i-iv) implementation
 def load_and_filter_data(path=Path.cwd() / "p2-texts" / "hansard40000.csv"):
@@ -25,7 +29,7 @@ def vectorize_and_split(df, random_state=26, test_size=0.25):
     # 1) fit & transform
     vects = TfidfVectorizer(stop_words='english', max_features=3000)
     X = vects.fit_transform(df['speech'])
-    y = df['party']
+    y = df['party']  # Label to predict
     # 2) stratified split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
@@ -42,3 +46,22 @@ if __name__ == "__main__":
     print(df.shape)
     # Task 2b
     X_train, X_test, y_train, y_test, vect = vectorize_and_split(df)
+    
+    # Task 2c - Train and evaluate classifiers
+    def train_and_evaluate(X_train, X_test, y_train, y_test):
+        # Random Forest Classifier
+        rf = RandomForestClassifier(n_estimators=300, random_state=26)
+        rf.fit(X_train, y_train)
+        y_pred_rf = rf.predict(X_test)
+        macro_f1_rf = f1_score(y_test, y_pred_rf, average="macro")
+        print(f"Random Forest macro-average F1 score: {macro_f1_rf:.4f}")
+        print(classification_report(y_test, y_pred_rf))
+        
+        # Linear SVM Classifier
+        svm = SVC(kernel='linear', random_state=26)
+        svm.fit(X_train, y_train)
+        y_pred_svm = svm.predict(X_test)
+        macro_f1_svm = f1_score(y_test, y_pred_svm, average="macro")
+        print(f"Linear SVM macro-average F1 score: {macro_f1_svm:.4f}")
+        print(classification_report(y_test, y_pred_svm))
+    train_and_evaluate(X_train, X_test, y_train, y_test)
