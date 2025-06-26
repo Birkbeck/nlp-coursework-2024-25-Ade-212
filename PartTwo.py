@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score, classification_report
+import spacy
+
+nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])  # Load spaCy model without NER and parser for speed
 
 
 # Task 2a(i-iv) implementation
@@ -38,6 +41,18 @@ def vectorize_and_split(df, random_state=26, test_size=0.25):
         random_state=random_state
     )
     return X_train, X_test, y_train, y_test, vects
+
+# Task 2e implementation
+def custom_tokenizer(text):
+    # Tokenize using spaCy
+    doc = nlp(text)
+    # Return a list of tokens, excluding stop words and punctuation
+    return [
+        token.lemma_.lower()
+        for token in doc
+        if token.is_alpha and not token.is_stop
+        and len(token) >=3  # Exclude very short tokens
+    ]
 
 
 if __name__ == "__main__":
@@ -81,8 +96,39 @@ if __name__ == "__main__":
         stratify=y,
         random_state=26
     )
-
     # Print macro-F1 and classification report again, now with n-grams range (1, 3)
     train_and_evaluate(Xn_train, Xn_test, yn_train, yn_test)
+    
+    # Task 2e: Custom tokenizer
+    vect_c = TfidfVectorizer(
+        tokenizer=custom_tokenizer,
+        max_features=3000
+    )
+    Xc = vect_c.fit_transform(df["speech"])
+    yc = df["party"]
+    Xc_train, Xc_test, yc_train, yc_test = train_test_split(
+        Xc, yc,
+        test_size=0.25,
+        stratify=yc,
+        random_state=26
+    )
+
+    # retrain and print only the best classifier’s report
+    rf_c = RandomForestClassifier(n_estimators=300, random_state=26)
+    rf_c.fit(Xc_train, yc_train)
+    y_rf_c = rf_c.predict(Xc_test)
+    f1_rf_c = f1_score(yc_test, y_rf_c, average="macro")
+
+    svm_c = SVC(kernel="linear", random_state=26)
+    svm_c.fit(Xc_train, yc_train)
+    y_svm_c = svm_c.predict(Xc_test)
+    f1_svm_c = f1_score(yc_test, y_svm_c, average="macro")
+
+    if f1_svm_c >= f1_rf_c:
+        print("=== Linear SVM classification report ===")
+        print(classification_report(yc_test, y_svm_c))
+    else:
+        print("=== Random Forest classification report ===")
+        print(classification_report(yc_test, y_rf_c))
 
 
