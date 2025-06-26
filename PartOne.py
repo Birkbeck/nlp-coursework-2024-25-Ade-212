@@ -246,14 +246,13 @@ if __name__ == "__main__":
     print(path)
     df = read_novels(path) # this line will fail until you have completed the read_novels function above.
     print(df.head())
-    #nltk.download("cmudict")
+    nltk.download("cmudict")
     df = parse(df)
     print(df.head())
     print(get_ttrs(df))
     print(get_fks(df))
     df = pd.read_pickle(Path.cwd() / "pickles"/ "parsed.pickle")
     print(df.head())
-    #print(adjective_counts(df))
  
     for _, row in df.iterrows():
         title = row["title"]
